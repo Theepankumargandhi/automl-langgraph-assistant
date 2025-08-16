@@ -28,7 +28,7 @@ A Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end
 
 
 
-## How to use the app
+## How to use this
 
 -Load data: upload a CSV or paste a Kaggle slug/URL.
 
