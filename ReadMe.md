@@ -120,7 +120,7 @@ automl-assistant/
 
 -Reporting: summary_agent.py builds Markdown (plots inline for UI); app.py sanitizes for download and ReportLab converts to PDF with page-sized images.
 
-## Customization tips
+## Customization 
 
 -Rules & RAG: edit rules_data.json (add imputation/encoding/plotting policies, modeling patterns), then run ingest_rules.py.
 
@@ -130,6 +130,7 @@ automl-assistant/
 
 -PDF: tweak margins/styles in the PDF section of app.py.
 
+---
 ### Configure Environment Variables
 in the .env file  add your keys:
 ```
@@ -139,6 +140,7 @@ KAGGLE_USERNAME
 
 KAGGLE_KEY
 ```
+---
 
 ### Run the Application
 ```
