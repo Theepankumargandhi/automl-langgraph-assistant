@@ -83,7 +83,7 @@ automl-assistant/
 ##  Screenshots
 
 **Landing Page**  
-![Landing Page](Screenshots/langing_page.png)
+![Landing Page](Screenshots/landing_page.png)
 
 **Dataset Upload**
 ![Selection Page](Screenshots/dataset_page.png)
