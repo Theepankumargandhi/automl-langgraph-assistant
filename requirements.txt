@@ -1,0 +1,15 @@
+streamlit
+python-dotenv
+pandas
+numpy
+scikit-learn
+matplotlib
+Pillow           
+reportlab        
+langgraph
+langchain
+langchain-openai
+langchain-chroma
+chromadb
+tiktoken         
+kaggle

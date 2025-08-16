@@ -1,0 +1,14 @@
+# secrets
+.env*
+# generated / big / cache
+__pycache__/
+chroma_store/
+dataset/
+rules/
+python
+str
+Tuple[pd.DataFrame]
+# generic big files
+*.bin
+*.db
+*.pkl
