@@ -52,6 +52,9 @@ A Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end
 
 -Export: download run_summary.md and run_summary.pdf
 
+
+##  Project Structure
+
 ```
 automl-assistant/
 ├─ app.py                     # Streamlit UI (upload/Kaggle loader, target pick, run, results, downloads)
@@ -83,6 +86,7 @@ automl-assistant/
 └─ README.md                  # Project documentation
 
 ```
+---
 
 ##  Screenshots
 
@@ -102,6 +106,7 @@ automl-assistant/
 **Generated Summary**  
 ![Chat Summary](Screenshots/generated_summary.png)
 
+---
 
 ## What’s happening under the hood (short)
 
