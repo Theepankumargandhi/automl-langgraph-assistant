@@ -1,6 +1,6 @@
 # AutoML Assistant (Tabular) — with RAG + Safe Execution
 
-A Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-to-end:
+Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-to-end:
 1) profile data
 2) plan steps
 3)  retrieve rules/examples with RAG (Chroma) →  
