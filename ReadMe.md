@@ -1,8 +1,12 @@
 # AutoML Assistant (Tabular) — with RAG + Safe Execution
 
 A Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-to-end:
-1) profile data → 2) plan steps → 3) retrieve rules/examples with RAG (Chroma) →  
-4) LLM generates code → 5) run safely with guards → 6) evaluate & pick best model →  
+1) profile data
+2) plan steps
+3)  retrieve rules/examples with RAG (Chroma) →  
+4) LLM generates code
+5) run safely with guards
+6) evaluate & pick best model →  
 7) produce a polished Markdown + PDF report (with plots).
 
 ---
@@ -99,7 +103,6 @@ automl-assistant/
 ![Chat Summary](Screenshots/generated_summary.png)
 
 
-
 ## What’s happening under the hood (short)
 
 -LangGraph orchestrates modular “agents” (intake → profile → planning → retrieval → pipeline_build → execution → evaluation → summary).
@@ -121,3 +124,22 @@ automl-assistant/
 -Baselines: adjust algorithms/metrics in pipeline_builder.py / evaluation_agent.py.
 
 -PDF: tweak margins/styles in the PDF section of app.py.
+
+### Configure Environment Variables
+in the .env file  add your keys:
+```
+OPENAI_API_KEY
+
+KAGGLE_USERNAME
+
+KAGGLE_KEY
+```
+
+### Run the Application
+```
+streamlit run app.py
+```
+
+#### License
+
+This project is licensed under the MIT License.
