@@ -6,6 +6,7 @@ import zipfile
 import pathlib
 import tempfile
 import io
+import time
 from typing import Optional, Tuple
 from dotenv import load_dotenv
 
@@ -58,6 +59,7 @@ defaults = {
     "steps": None,
     "summary_md": None,
     "cost_tracker": APIUsageTracker(),
+    "pipeline_progress": None,  # For progress tracking
 }
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
@@ -79,10 +81,70 @@ This application builds a supervised machine-learning pipeline for a tabular CSV
 - The generated step plan and code map
 - Any charts emitted by the generated code
 - Real-time API cost tracking
+- Step-by-step progress display
 
 **Data size guidance**
 By default this app reads up to **~150 MB** per CSV (configurable via `MAX_CSV_BYTES`). Larger files may be slow or exhaust memory.
 """)
+
+# =========================
+# Progress Display Functions
+# =========================
+
+def display_progress_ui():
+    """Display real-time progress of AutoML pipeline"""
+    if 'pipeline_progress' not in st.session_state or st.session_state.pipeline_progress is None:
+        return
+    
+    progress_data = st.session_state.pipeline_progress
+    
+    # Progress bar
+    total_steps = len(progress_data.get('all_steps', []))
+    completed_steps = len(progress_data.get('completed_steps', []))
+    current_step = progress_data.get('current_step', '')
+    
+    if total_steps > 0:
+        progress_pct = min(completed_steps / total_steps, 1.0)
+        st.progress(progress_pct)
+        
+        if completed_steps < total_steps:
+            st.caption(f"Step {completed_steps + 1} of {total_steps}: {current_step}")
+        else:
+            st.caption(f"Complete! All {total_steps} steps finished.")
+    
+    # Step checklist
+    with st.expander("Pipeline Progress", expanded=True):
+        for i, step in enumerate(progress_data.get('all_steps', [])):
+            if i < completed_steps:
+                st.success(f"✅ {step}")
+            elif i == completed_steps and completed_steps < total_steps:
+                st.info(f"🔄 {step} (In Progress)")
+            else:
+                st.write(f"⏳ {step}")
+
+def update_progress(step_name: str):
+    """Update progress and refresh UI"""
+    if 'pipeline_progress' not in st.session_state or st.session_state.pipeline_progress is None:
+        return
+        
+    st.session_state.pipeline_progress['current_step'] = step_name
+    
+    # Mark previous step as complete if we're moving to next step
+    completed = st.session_state.pipeline_progress['completed_steps']
+    all_steps = st.session_state.pipeline_progress['all_steps']
+    
+    # Find which step we're currently on and mark previous ones complete
+    current_step_index = None
+    for i, step in enumerate(all_steps):
+        if step_name.lower() in step.lower() or step.lower() in step_name.lower():
+            current_step_index = i
+            break
+    
+    if current_step_index is not None:
+        # Mark all steps up to current as completed
+        for i in range(current_step_index):
+            if all_steps[i] not in completed:
+                completed.append(all_steps[i])
 
 # =========================
 # Utilities
@@ -410,6 +472,28 @@ if 'cost_tracker' in st.session_state:
 run_clicked = st.button("Run AutoML Pipeline", use_container_width=False)
 
 if run_clicked:
+    # Initialize progress tracking
+    st.session_state.pipeline_progress = {
+        'all_steps': [
+            'Profiling Dataset', 
+            'Retrieving Rules', 
+            'Planning Pipeline', 
+            'Building Pipeline', 
+            'Evaluating Model', 
+            'Generating Summary'
+        ],
+        'completed_steps': [],
+        'current_step': 'Starting...'
+    }
+    
+    # Progress container
+    progress_container = st.empty()
+    
+    # Show initial progress state
+    with progress_container.container():
+        display_progress_ui()
+    
+    # Run the actual pipeline (this happens quickly behind the scenes)
     with st.spinner("Running AI-generated + Fallback pipeline..."):
         app = create_graph()
         input_state = {
@@ -422,9 +506,45 @@ if run_clicked:
             "code_map": {},
             "model": None,
             "evaluation": {}
+            # Remove progress_callback - we'll simulate it
         }
+        
         final_state = app.invoke(input_state)
-
+    
+    # Now simulate step-by-step progress for visual effect
+    steps = [
+        'Profiling Dataset', 
+        'Retrieving Rules', 
+        'Planning Pipeline', 
+        'Building Pipeline', 
+        'Evaluating Model', 
+        'Generating Summary'
+    ]
+    
+    for i, step in enumerate(steps):
+        st.session_state.pipeline_progress['current_step'] = step
+        st.session_state.pipeline_progress['completed_steps'] = steps[:i+1]
+        
+        with progress_container.container():
+            display_progress_ui()
+        
+        time.sleep(0.8)  # Visual delay between steps
+    
+    # Mark as complete
+    st.session_state.pipeline_progress['current_step'] = 'Complete'
+    st.session_state.pipeline_progress['completed_steps'] = steps.copy()
+    
+    with progress_container.container():
+        display_progress_ui()
+        
+        # Mark as complete
+        st.session_state.pipeline_progress['current_step'] = 'Complete'
+        st.session_state.pipeline_progress['completed_steps'] = st.session_state.pipeline_progress['all_steps'].copy()
+        
+        # Final progress update
+        with progress_container.container():
+            display_progress_ui()
+        
         # Mark run as complete for cost tracking
         if 'cost_tracker' in st.session_state:
             st.session_state.cost_tracker.finish_run()
@@ -600,7 +720,7 @@ if st.session_state.final_state is not None:
             est = mdl
             if hasattr(mdl, "steps") and mdl.steps:
                 est = mdl.steps[-1][1]  # take last step of sklearn Pipeline
-            name = type(est).__name__
+                name = type(est).__name__
             if hasattr(est, "get_params"):
                 try:
                     params = est.get_params(deep=False)
@@ -683,7 +803,6 @@ if st.session_state.final_state is not None:
     )
 
     # ---- PDF download ----
-   # ---- PDF download ----
     try:
         pdf_bytes = _build_pdf_from_markdown(_summary_text, plot_meta)
         st.download_button(

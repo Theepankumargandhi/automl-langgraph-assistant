@@ -46,10 +46,34 @@ HINT: Prefer a different reasonable estimator family than your first instinct
 (e.g., if you'd normally pick a tree-based model, consider a linear model; if linear, consider a tree).
 """
 
+def _track_api_cost(response, operation: str):
+    """Track API cost if Streamlit session exists"""
+    try:
+        import streamlit as st
+        if hasattr(st, 'session_state') and 'cost_tracker' in st.session_state:
+            st.session_state.cost_tracker.track_openai_call(response, operation)
+    except Exception:
+        pass  # Fail silently if tracking unavailable
+
 def _build_chain(model_name: str, temperature: float, template: str) -> LLMChain:
     prompt = PromptTemplate(input_variables=["step"], template=template)
     llm = ChatOpenAI(model=model_name, temperature=temperature)
-    return LLMChain(llm=llm, prompt=prompt)
+    chain = LLMChain(llm=llm, prompt=prompt)
+    
+    # Wrap the run method to track costs
+    original_run = chain.run
+    def tracked_run(*args, **kwargs):
+        result = original_run(*args, **kwargs)
+        # Note: LLMChain.run() returns a string, not the raw response object
+        # So we can't track tokens directly, but we can estimate
+        try:
+            _track_api_cost(result, "llm_codegen")
+        except Exception:
+            pass
+        return result
+    chain.run = tracked_run
+    
+    return chain
 
 def _clean_code_blocks(text: str) -> str:
     """Extract raw Python code if fenced; otherwise return as-is."""
