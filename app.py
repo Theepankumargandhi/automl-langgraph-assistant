@@ -1,5 +1,4 @@
 # app.py
-# app.py
 import os
 import re
 import glob
@@ -16,6 +15,9 @@ try:
 except Exception as _import_err:
     def generate_run_summary(_state):
         return f"# AutoML Run Summary\n\n_Summary agent unavailable: {_import_err}_"
+
+# --- Cost tracking import ---
+from cost_tracker import APIUsageTracker
 
 load_dotenv()  # load KAGGLE_USERNAME / KAGGLE_KEY from .env if present
 
@@ -55,6 +57,7 @@ defaults = {
     "code_map": None,
     "steps": None,
     "summary_md": None,
+    "cost_tracker": APIUsageTracker(),
 }
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
@@ -69,12 +72,13 @@ This application builds a supervised machine-learning pipeline for a tabular CSV
 - Deterministic baseline: A BaselineSelector trains conventional, strong models (Logistic Regression / Random Forest for classification; Ridge / RandomForestRegressor for regression) with robust preprocessing.
 - Selection and safety: Both approaches are evaluated on a fresh hold-out split. The better performing model is used. If LLM code cannot produce a valid model, the baseline is used automatically. Heavy tuning and file I/O in generated code are disabled by default.
 
-**What you’ll see**
+**What you'll see**
 - Dataset profile and inferred task type
 - Hold-out metrics (Accuracy/F1 for classification, RMSE/R² for regression) and cross-validation details for the baseline (when available)
 - On-demand confusion matrix
 - The generated step plan and code map
 - Any charts emitted by the generated code
+- Real-time API cost tracking
 
 **Data size guidance**
 By default this app reads up to **~150 MB** per CSV (configurable via `MAX_CSV_BYTES`). Larger files may be slow or exhaust memory.
@@ -388,6 +392,21 @@ st.session_state.target_column = target_column
 # 3) Run pipeline
 # =========================
 st.subheader("3) Run AutoML")
+
+# Display current API costs
+if 'cost_tracker' in st.session_state:
+    cost_col1, cost_col2, cost_col3 = st.columns(3)
+    with cost_col1:
+        current_cost = st.session_state.cost_tracker.get_current_run_total()
+        st.metric("Current Run Cost", f"${current_cost:.4f}")
+    with cost_col2:
+        session_cost = st.session_state.cost_tracker.get_session_total()
+        st.metric("Session Total", f"${session_cost:.4f}")
+    with cost_col3:
+        # Estimate cost based on dataset size (rough approximation)
+        estimated_cost = min(0.02 + (len(df) / 10000) * 0.01, 0.10)  # Cap at $0.10
+        st.metric("Estimated Cost", f"${estimated_cost:.4f}")
+
 run_clicked = st.button("Run AutoML Pipeline", use_container_width=False)
 
 if run_clicked:
@@ -405,6 +424,10 @@ if run_clicked:
             "evaluation": {}
         }
         final_state = app.invoke(input_state)
+
+        # Mark run as complete for cost tracking
+        if 'cost_tracker' in st.session_state:
+            st.session_state.cost_tracker.finish_run()
 
     # Persist results for future reruns
     st.session_state.final_state = final_state
@@ -424,6 +447,19 @@ if st.session_state.final_state is not None:
     profile = st.session_state.profile
     metrics = st.session_state.metrics
     model   = st.session_state.model
+
+    # Display final cost breakdown
+    if 'cost_tracker' in st.session_state:
+        st.subheader("Cost Breakdown")
+        breakdown = st.session_state.cost_tracker.get_breakdown()
+        if breakdown:
+            cost_df = pd.DataFrame([
+                {"Operation": op, "Cost ($)": f"${cost:.4f}"} 
+                for op, cost in breakdown.items()
+            ])
+            st.table(cost_df)
+            total_run_cost = sum(breakdown.values())
+            st.caption(f"Total pipeline cost: ${total_run_cost:.4f}")
 
     # Profile
     st.subheader("Dataset Profile")
@@ -647,6 +683,7 @@ if st.session_state.final_state is not None:
     )
 
     # ---- PDF download ----
+   # ---- PDF download ----
     try:
         pdf_bytes = _build_pdf_from_markdown(_summary_text, plot_meta)
         st.download_button(

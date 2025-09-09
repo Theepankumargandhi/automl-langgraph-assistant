@@ -120,6 +120,15 @@ OUTPUT FORMAT:
     llm = ChatOpenAI(model=model_name, temperature=0)
     chain: RunnableSequence = prompt_template | llm
     response = chain.invoke({"rules": rules_text, "facts": profile_text})
+    
+    # Track API cost
+    try:
+        import streamlit as st
+        if hasattr(st, 'session_state') and 'cost_tracker' in st.session_state:
+            st.session_state.cost_tracker.track_openai_call(response, "planning")
+    except Exception:
+        pass
+    
     text = getattr(response, "content", str(response)).strip()
 
     # Split into lines, strip bullets, and drop empties

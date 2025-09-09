@@ -1,5 +1,4 @@
 # execution_agent.py
-# execution_agent.py
 from typing import List, Dict
 import re
 import time
@@ -128,6 +127,15 @@ def _context_from_state(state: Dict) -> Dict[str, str]:
         "profile_json": profile_json,
     }
 
+def _track_api_cost(response, operation: str):
+    """Track API cost if Streamlit session exists"""
+    try:
+        import streamlit as st
+        if hasattr(st, 'session_state') and 'cost_tracker' in st.session_state:
+            st.session_state.cost_tracker.track_openai_call(response, operation)
+    except Exception:
+        pass  # Fail silently if tracking unavailable
+
 # --- Main entrypoint ----------------------------------------------------------
 
 def generate_code_for_steps(steps: List[str], state: Dict) -> Dict[str, str]:
@@ -150,8 +158,8 @@ def generate_code_for_steps(steps: List[str], state: Dict) -> Dict[str, str]:
     for step in steps:
         print(f"\n Generating code for step: {step}")
 
-        def _invoke(chain):
-            return chain.invoke({
+        def _invoke(chain, step_name):
+            response = chain.invoke({
                 "step": step,
                 "target": state["target_column"],
                 "task": state.get("profile", {}).get("target_type", "classification"),
@@ -160,14 +168,18 @@ def generate_code_for_steps(steps: List[str], state: Dict) -> Dict[str, str]:
                 "fewshot": ctx["fewshot"],
                 "profile_json": ctx["profile_json"],
             })
+            
+            # Track API cost
+            _track_api_cost(response, f"code_gen_{step_name}")
+            return response
 
         try:
             # Two candidates
-            resp1 = _retry_call(lambda: _invoke(chain_primary))
+            resp1 = _retry_call(lambda: _invoke(chain_primary, step[:30]))
             txt1 = getattr(resp1, "content", str(resp1))
             code1 = extract_python_code(txt1)
 
-            resp2 = _retry_call(lambda: _invoke(chain_secondary))
+            resp2 = _retry_call(lambda: _invoke(chain_secondary, step[:30]))
             txt2 = getattr(resp2, "content", str(resp2))
             code2 = extract_python_code(txt2)
 
