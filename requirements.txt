@@ -13,3 +13,11 @@ langchain-chroma
 chromadb
 tiktoken         
 kaggle
+fastapi
+uvicorn
+pandas
+scikit-learn
+joblib
+mlflow
+pytest>=7.0.0
+flake8>=6.0.0
