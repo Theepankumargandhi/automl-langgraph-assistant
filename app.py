@@ -368,10 +368,19 @@ st.dataframe(df.head(15), use_container_width=True)
 # 2) Select target
 # =========================
 st.subheader("2) Select Target Column")
+# Safe target column selection
+target_options = list(df.columns)
+try:
+    default_index = 0 if st.session_state.target_column is None else target_options.index(st.session_state.target_column)
+except ValueError:
+    # If cached target doesn't exist in new dataset, reset to first column
+    default_index = 0
+    st.session_state.target_column = None
+
 target_column = st.selectbox(
     "Target column",
-    options=list(df.columns),
-    index=0 if st.session_state.target_column is None else list(df.columns).index(st.session_state.target_column)
+    options=target_options,
+    index=default_index
 )
 st.session_state.target_column = target_column
 
