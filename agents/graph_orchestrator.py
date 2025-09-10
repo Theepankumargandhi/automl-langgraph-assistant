@@ -10,7 +10,7 @@ from agents.planning_agent import plan_from_rules
 from agents.execution_agent import generate_code_for_steps
 from agents.pipeline_builder import build_pipeline
 from agents.evaluation_agent import evaluate_model
-from agents.summary_agent import generate_run_summary  # <-- new
+from agents.summary_agent import generate_run_summary
 
 
 class AgentState(TypedDict, total=False):
@@ -23,10 +23,14 @@ class AgentState(TypedDict, total=False):
     model: object
     evaluation: dict
     fallback: bool
-    summary_md: str  # <-- new
+    summary_md: str
+    progress_callback: callable  # For progress tracking
 
 
 def profile_node(state: AgentState) -> AgentState:
+    if state.get("progress_callback"):
+        state["progress_callback"]("Profiling Dataset")
+    
     profile = profile_dataset.invoke({
         "df": state["df"],
         "target_column": state["target_column"]
@@ -36,6 +40,9 @@ def profile_node(state: AgentState) -> AgentState:
 
 
 def retrieval_node(state: AgentState) -> AgentState:
+    if state.get("progress_callback"):
+        state["progress_callback"]("Retrieving Rules")
+    
     chroma_client = Client()
     rules, fallback = retrieve_rules(state["profile"], chroma_client)
     state["rules"] = rules
@@ -44,6 +51,9 @@ def retrieval_node(state: AgentState) -> AgentState:
 
 
 def planning_node(state: AgentState) -> AgentState:
+    if state.get("progress_callback"):
+        state["progress_callback"]("Planning Pipeline")
+    
     if state.get("fallback"):
         steps = plan_from_rules(["Default plan for classification/regression on in-memory df."])
     else:
@@ -53,6 +63,9 @@ def planning_node(state: AgentState) -> AgentState:
 
 
 def pipeline_node(state: AgentState) -> AgentState:
+    if state.get("progress_callback"):
+        state["progress_callback"]("Building Pipeline")
+    
     steps = state.get("steps", [])
     code_map = generate_code_for_steps(steps, state)
     try:
@@ -66,6 +79,9 @@ def pipeline_node(state: AgentState) -> AgentState:
 
 
 def evaluation_node(state: AgentState) -> AgentState:
+    if state.get("progress_callback"):
+        state["progress_callback"]("Evaluating Model")
+    
     profile = state.get("profile", {}) or {}
     task_type = profile.get("target_type")
     model = state.get("model", None)
@@ -79,6 +95,9 @@ def evaluation_node(state: AgentState) -> AgentState:
 
 
 def summarize_node(state: AgentState) -> AgentState:
+    if state.get("progress_callback"):
+        state["progress_callback"]("Generating Summary")
+    
     """
     We only stash a placeholder here; the rich payload and final markdown
     are built in app.py where we also know plot paths, etc.
