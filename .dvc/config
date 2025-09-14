@@ -1,0 +1,5 @@
+[core]
+    remote = s3remote
+['remote "s3remote"']
+    url = s3://automl-dvc-bucket-2024-tgandhi
+    region = us-east-1

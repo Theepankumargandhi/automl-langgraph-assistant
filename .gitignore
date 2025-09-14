@@ -61,3 +61,7 @@ env/
 *.tmp
 *.temp
 /rules
+".dvc/cache" 
+".dvc/tmp" 
+"*.pem" 
+"test.txt" 
