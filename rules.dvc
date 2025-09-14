@@ -1,0 +1,6 @@
+outs:
+- md5: 3103712bd004e21b142878fd824651be.dir
+  size: 98000
+  nfiles: 42
+  hash: md5
+  path: rules

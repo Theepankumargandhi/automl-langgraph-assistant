@@ -60,3 +60,4 @@ env/
 # Temporary files
 *.tmp
 *.temp
+/rules
