@@ -12,10 +12,17 @@ services:
       - ALLOW_IO=1
       - ALLOW_TUNING=0
       - ALLOWED_DATA_DIR=/app/data
+      # MLflow configuration
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/app/mlflow-artifacts
+      - MLFLOW_EXPERIMENT_NAME=automl-assistant-experiments
     volumes:
       - ./data:/app/data
       - ./outputs:/app/outputs
       - ./chroma_store:/app/chroma_store
+      - ./mlflow-artifacts:/app/mlflow-artifacts
+    depends_on:
+      - mlflow
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
@@ -24,7 +31,35 @@ services:
       retries: 3
       start_period: 60s
 
-  # Optional: Add a vector database service
+  # MLflow tracking server
+  mlflow:
+    image: python:3.9-slim
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow-artifacts:/mlflow/artifacts
+      - ./mlflow-db:/mlflow/db
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow/db/mlflow.db
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+    command: >
+      bash -c "
+        pip install mlflow[extras]==2.8.0 &&
+        mlflow server 
+        --backend-store-uri sqlite:///mlflow/db/mlflow.db 
+        --default-artifact-root /mlflow/artifacts 
+        --host 0.0.0.0 
+        --port 5000
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Optional: ChromaDB service (your existing setup)
   chroma:
     image: chromadb/chroma:latest
     ports:

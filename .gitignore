@@ -1,14 +1,62 @@
 # secrets
 .env*
+
 # generated / big / cache
 __pycache__/
 chroma_store/
 dataset/
 rules/
-python
-str
-Tuple[pd.DataFrame]
+*.pyc
+*.pyo
+*.pyd
+
+# MLflow files
+mlflow.db
+mlflow-artifacts/
+mlruns/
+
+# Streamlit
+.streamlit/
+
+# Generated plots
+step_*_plot.png
+*.png
+
+# Model files
+*.pkl
+*.joblib
+
+# Data files
+*.csv
+*.xlsx
+*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python virtual environment
+venv/
+env/
+.Python
+
+# Jupyter notebooks
+.ipynb_checkpoints
+
 # generic big files
 *.bin
 *.db
 *.pkl
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp

@@ -1,4 +1,5 @@
 # agents/summary_agent.py
+# agents/summary_agent.py
 from __future__ import annotations
 
 import os
@@ -90,6 +91,59 @@ def _algo_name(model: Any) -> str:
         return type(model).__name__
     except Exception:
         return type(model).__name__
+
+# -------- MLflow logging helpers --------
+
+def _log_summary_to_mlflow(state: Dict[str, Any], summary_text: str):
+    """Log summary report and artifacts to MLflow (optional, non-breaking)"""
+    try:
+        import mlflow
+        import tempfile
+        
+        # Log summary as text artifact
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            f.write(summary_text)
+            temp_path = f.name
+        
+        mlflow.log_artifact(temp_path, "reports")
+        os.unlink(temp_path)
+        
+        # Log plot artifacts if available
+        plots = state.get("plots") or []
+        for plot in plots:
+            path = plot.get("path")
+            if path and os.path.exists(path):
+                mlflow.log_artifact(path, "visualizations")
+        
+        # Log code artifacts
+        code_map = state.get("code_map") or {}
+        if code_map:
+            # Combine all code into one artifact
+            combined_code = []
+            for idx, (step, code) in enumerate(code_map.items(), start=1):
+                combined_code.append(f"# Step {idx}: {step}")
+                combined_code.append(_clean_code(code or ""))
+                combined_code.append("")  # blank line
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+                f.write("\n".join(combined_code))
+                temp_path = f.name
+            
+            mlflow.log_artifact(temp_path, "code")
+            os.unlink(temp_path)
+        
+        # Log summary metadata as parameters
+        profile = state.get("profile") or {}
+        mlflow.log_param("summary.dataset_name", state.get("dataset_name", "unknown"))
+        mlflow.log_param("summary.algorithm", _algo_name(state.get("model")))
+        mlflow.log_param("summary.origin", state.get("origin", "unknown"))
+        mlflow.log_param("summary.task_type", profile.get("target_type", "unknown"))
+        
+    except ImportError:
+        # MLflow not available, skip logging
+        pass
+    except Exception as e:
+        print(f"MLflow summary logging error: {e}")
 
 # -------- main summary function --------
 
@@ -200,4 +254,12 @@ def generate_run_summary(state: Dict[str, Any]) -> str:
     lines.append("- Pipelines use sensible defaults (median impute for numeric; most_frequent + OHE for categorical).")
     lines.append("- The LLM pipeline is evaluated on a fresh hold-out; if unusable, a deterministic baseline is trained.")
 
-    return "\n".join(lines).strip() + "\n"
+    summary_text = "\n".join(lines).strip() + "\n"
+    
+    # Log to MLflow if available (optional, non-breaking)
+    try:
+        _log_summary_to_mlflow(state, summary_text)
+    except Exception:
+        pass  # Silently skip MLflow logging if it fails
+    
+    return summary_text

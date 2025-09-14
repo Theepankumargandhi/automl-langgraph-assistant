@@ -18,12 +18,22 @@ COPY . .
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-RUN mkdir -p /app/data /app/outputs /app/chroma_store
+# Create necessary directories for application, MLflow, and Chroma
+RUN mkdir -p /app/data /app/outputs /app/chroma_store /app/mlflow-artifacts
 
 ENV PYTHONPATH=/app
 ENV ALLOW_IO=1
 ENV ALLOW_TUNING=0
 ENV ALLOWED_DATA_DIR=/app/data
+
+# MLflow environment variables
+ENV MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+ENV MLFLOW_DEFAULT_ARTIFACT_ROOT=/app/mlflow-artifacts
+ENV MLFLOW_EXPERIMENT_NAME=automl-assistant-experiments
+ENV MLFLOW_REGISTRY_URI=sqlite:///mlflow.db
+ENV MLFLOW_AUTO_LOG=false
+ENV MLFLOW_LOG_ARTIFACTS=true
+ENV MLFLOW_LOG_MODELS=true
 
 EXPOSE 8501
 

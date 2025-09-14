@@ -131,8 +131,8 @@ def build_pipeline(df: pd.DataFrame, profile: dict, code_map: Dict[str, str]) ->
     model = None
     error_log = []
 
-    # -------- Dynamic skip list --------
-    skip_patterns = [r"\bdeploy\b", r"\bflask\b", r"\bfastapi\b", r"\bstreamlit\b", r"\bmlflow\b"]
+    # -------- Dynamic skip list (removed mlflow from banned patterns) --------
+    skip_patterns = [r"\bdeploy\b", r"\bflask\b", r"\bfastapi\b", r"\bstreamlit\b"]
     if not ALLOW_TUNING:
         skip_patterns += [r"\bgrid\s*search", r"\bgridsearch", r"\brandomized\s*search", r"\boptuna\b", r"\bhyperparam"]
     if not ALLOW_IO:
@@ -407,6 +407,11 @@ df = df[~((num_df < (Q1 - 1.5 * IQR)) | (num_df > (Q3 + 1.5 * IQR))).any(axis=1)
                         setattr(model, "_origin", "ai")
                     except Exception:
                         pass
+                    # Log LLM-generated model to MLflow
+                    try:
+                        _log_model_to_mlflow(model, "ai", candidate)
+                    except Exception:
+                        pass  # Non-breaking if MLflow fails
                     break
 
         except Exception as e:
@@ -594,6 +599,12 @@ df = df[~((num_df < (Q1 - 1.5 * IQR)) | (num_df > (Q3 + 1.5 * IQR))).any(axis=1)
         except Exception:
             pass
 
+        # Log baseline model to MLflow
+        try:
+            _log_model_to_mlflow(model, "baseline", winner_name)
+        except Exception:
+            pass  # Non-breaking if MLflow fails
+
         print("✅ BaselineSelector trained.")
 
     # ---- Summary of any issues ----
@@ -610,3 +621,51 @@ df = df[~((num_df < (Q1 - 1.5 * IQR)) | (num_df > (Q3 + 1.5 * IQR))).any(axis=1)
         pass
 
     return df_out, model
+
+
+def _log_model_to_mlflow(model, origin: str, model_type: str):
+    """Log model to MLflow registry (optional, non-breaking)"""
+    try:
+        import mlflow
+        import mlflow.sklearn
+        from mlflow_config import _algo_name
+        
+        # Get algorithm name
+        algo_name = _algo_name(model)
+        
+        # Create registered model name
+        registered_name = f"automl-{origin}-{algo_name.lower()}"
+        
+        # Log model with registry
+        model_info = mlflow.sklearn.log_model(
+            sk_model=model,
+            artifact_path="model",
+            registered_model_name=registered_name
+        )
+        
+        # Log model metadata
+        mlflow.log_param("model.origin", origin)
+        mlflow.log_param("model.algorithm", algo_name)
+        mlflow.log_param("model.type", model_type)
+        
+        # Log baseline selector info if available
+        baseline_info = getattr(model, "_baseline_selector", None)
+        if baseline_info:
+            mlflow.log_param("baseline.problem_type", baseline_info.get("problem"))
+            mlflow.log_param("baseline.primary_metric", baseline_info.get("primary_metric"))
+            mlflow.log_param("baseline.cv_folds", baseline_info.get("cv_folds"))
+            mlflow.log_param("baseline.winner", baseline_info.get("winner"))
+            
+            # Log CV results as metrics
+            results = baseline_info.get("results", {})
+            for model_name, metrics in results.items():
+                for metric_name, value in metrics.items():
+                    mlflow.log_metric(f"cv.{model_name}.{metric_name}", value)
+        
+        print(f"📊 Logged {origin} model to MLflow registry: {registered_name}")
+        
+    except ImportError:
+        # MLflow not available, skip logging
+        pass
+    except Exception as e:
+        print(f"MLflow model logging error: {e}")

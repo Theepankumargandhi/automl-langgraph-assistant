@@ -20,6 +20,13 @@ except Exception as _import_err:
 # --- Cost tracking import ---
 from cost_tracker import APIUsageTracker
 
+# --- MLflow imports ---
+try:
+    from mlflow_config import initialize_mlflow, get_experiment_info, get_mlflow_ui_url
+    MLFLOW_AVAILABLE = True
+except ImportError:
+    MLFLOW_AVAILABLE = False
+
 load_dotenv()  # load KAGGLE_USERNAME / KAGGLE_KEY from .env if present
 
 import pandas as pd
@@ -64,6 +71,10 @@ defaults = {
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
+# Enable MLflow logging in cost tracker
+if MLFLOW_AVAILABLE:
+    st.session_state.cost_tracker.enable_mlflow_logging()
+
 st.title("AutoML Assistant with RAG")
 st.markdown("""
 ### Overview
@@ -82,10 +93,115 @@ This application builds a supervised machine-learning pipeline for a tabular CSV
 - Any charts emitted by the generated code
 - Real-time API cost tracking
 - Step-by-step progress display
+- MLflow experiment tracking and model registry
 
 **Data size guidance**
 By default this app reads up to **~150 MB** per CSV (configurable via `MAX_CSV_BYTES`). Larger files may be slow or exhaust memory.
 """)
+
+# =========================
+# MLflow Helper Functions
+# =========================
+
+def display_mlflow_info():
+    """Display MLflow experiment tracking information"""
+    if not MLFLOW_AVAILABLE:
+        return
+    
+    try:
+        exp_info = get_experiment_info()
+        if exp_info:
+            st.subheader("📊 MLflow Experiment Tracking")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info(f"**Experiment:** {exp_info['experiment_name']}")
+                st.info(f"**ID:** {exp_info['experiment_id']}")
+            
+            with col2:
+                mlflow_url = get_mlflow_ui_url()
+                st.markdown(f"**MLflow UI:** [Open Dashboard]({mlflow_url})")
+                
+                # Display current run if available
+                if 'final_state' in st.session_state and st.session_state.final_state:
+                    run_id = st.session_state.final_state.get('mlflow_run_id')
+                    if run_id:
+                        run_url = f"{mlflow_url}/#/experiments/{exp_info['experiment_id']}/runs/{run_id}"
+                        st.markdown(f"**Current Run:** [View Details]({run_url})")
+    except Exception as e:
+        st.caption(f"MLflow info unavailable: {e}")
+
+def display_enhanced_cost_breakdown():
+    """Display cost breakdown with MLflow integration"""
+    if 'cost_tracker' in st.session_state:
+        st.subheader("💰 Cost Breakdown")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            breakdown = st.session_state.cost_tracker.get_breakdown()
+            if breakdown:
+                cost_df = pd.DataFrame([
+                    {"Operation": op, "Cost ($)": f"${cost:.4f}"} 
+                    for op, cost in breakdown.items()
+                ])
+                st.table(cost_df)
+                total_run_cost = sum(breakdown.values())
+                st.caption(f"**Total pipeline cost:** ${total_run_cost:.4f}")
+        
+        with col2:
+            # Enhanced cost statistics
+            stats = st.session_state.cost_tracker.get_detailed_stats()
+            if stats:
+                st.metric("Total Tokens", f"{stats.get('total_tokens', 0):,}")
+                st.metric("Cost per Token", f"${stats.get('cost_per_token', 0):.6f}")
+                st.metric("API Calls", stats.get('total_calls', 0))
+                
+                if stats.get('duration_seconds', 0) > 0:
+                    st.metric("Duration", f"{stats['duration_seconds']:.1f}s")
+
+def display_mlflow_model_info(model):
+    """Display MLflow model registry information"""
+    if not MLFLOW_AVAILABLE or not model:
+        return
+    
+    try:
+        import mlflow
+        
+        # Get current run info
+        if hasattr(st.session_state, 'final_state') and st.session_state.final_state:
+            run_id = st.session_state.final_state.get('mlflow_run_id')
+            if run_id:
+                st.subheader("📋 MLflow Model Registry")
+                
+                origin = getattr(model, "_origin", "unknown")
+                algo_name = type(model).__name__
+                
+                # Try to get model from registry
+                model_name = f"automl-{origin}-{algo_name.lower()}"
+                
+                try:
+                    registered_models = mlflow.search_registered_models(f"name='{model_name}'")
+                    if registered_models:
+                        latest_version = registered_models[0].latest_versions[0] if registered_models[0].latest_versions else None
+                        if latest_version:
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.info(f"**Registered Model:** {model_name}")
+                                st.info(f"**Version:** {latest_version.version}")
+                            with col2:
+                                st.info(f"**Stage:** {latest_version.current_stage}")
+                                st.info(f"**Run ID:** {latest_version.run_id[:8]}...")
+                        
+                        mlflow_url = get_mlflow_ui_url()
+                        model_url = f"{mlflow_url}/#/models/{model_name}"
+                        st.markdown(f"**View in MLflow:** [Model Registry]({model_url})")
+                        
+                except Exception:
+                    st.info(f"Model '{model_name}' registration in progress...")
+                    
+    except Exception as e:
+        st.caption(f"MLflow model info unavailable: {e}")
 
 # =========================
 # Progress Display Functions
@@ -568,18 +684,11 @@ if st.session_state.final_state is not None:
     metrics = st.session_state.metrics
     model   = st.session_state.model
 
-    # Display final cost breakdown
-    if 'cost_tracker' in st.session_state:
-        st.subheader("Cost Breakdown")
-        breakdown = st.session_state.cost_tracker.get_breakdown()
-        if breakdown:
-            cost_df = pd.DataFrame([
-                {"Operation": op, "Cost ($)": f"${cost:.4f}"} 
-                for op, cost in breakdown.items()
-            ])
-            st.table(cost_df)
-            total_run_cost = sum(breakdown.values())
-            st.caption(f"Total pipeline cost: ${total_run_cost:.4f}")
+    # Enhanced cost breakdown with MLflow integration
+    display_enhanced_cost_breakdown()
+
+    # MLflow Experiment Tracking
+    display_mlflow_info()
 
     # Profile
     st.subheader("Dataset Profile")
@@ -629,6 +738,9 @@ if st.session_state.final_state is not None:
                 cols = [c for c in ["rmse", "r2", "fit_time_s"] if c in res.columns]
             st.table(res[cols])
         st.success(f"Winner: {bs.get('winner')}")
+
+    # MLflow Model Registry
+    display_mlflow_model_info(model)
 
     # Generated visualizations
     plot_info = getattr(model, "_plot_info", {}) if model is not None else {}
