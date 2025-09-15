@@ -106,6 +106,7 @@ automl-assistant/
 **Results**  
 ![Text Output](Screenshots/results.png)
 
+**Visualization results**  
 ![Text Output](Screenshots/result1.png)
 
 **Code Generation**  
@@ -121,12 +122,19 @@ automl-assistant/
 ## Technology Implementation
 
 **LLM Integration**: OpenAI GPT-4o generates custom pipeline code with strict execution contracts
+
 **Vector Database**: ChromaDB stores and retrieves ML best practices for context-aware code generation
+
 **Experiment Tracking**: MLflow logs all pipeline runs, parameters, metrics, and artifacts with model registry
+
 **Data Versioning**: DVC manages 43 ML rule documents stored in AWS S3 with cross-environment sync
+
 **Cloud Infrastructure**: AWS EC2 deployment with proper security groups and S3 integration
+
 **Containerization**: Docker and Docker Compose for multi-service application deployment
+
 **CI/CD Pipeline**: GitHub Actions automates testing, building, security scanning, and DockerHub publishing
+
 **API Protocols**: MCP implementation provides JSON-RPC interface for external tool integration
 
 ---
@@ -135,7 +143,7 @@ automl-assistant/
 
 ## Environment Configuration
 Create .env file with required credentials:
-
+```
 OPENAI_API_KEY=your_openai_api_key
 KAGGLE_USERNAME=your_kaggle_username  
 KAGGLE_KEY=your_kaggle_api_key
@@ -143,7 +151,7 @@ AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
 AWS_DEFAULT_REGION=us-east-1
 MLFLOW_TRACKING_URI=http://localhost:5000
-
+```
 
 
 ## Configure DVC for data versioning:
@@ -157,8 +165,8 @@ dvc pull
 ## Local Development:
 ```
 git clone https://github.com/Theepankumargandhi/automl-langgraph-assistant.git
-
 ```
+
 ## cd automl-langgraph-assistant
 
 ### Requiremetns
@@ -166,10 +174,10 @@ git clone https://github.com/Theepankumargandhi/automl-langgraph-assistant.git
 pip install -r requirements.txt
 ```
 
-### Run the Application
+## Run the Application
 ```
 streamlit run app.py
-``
+```
 
 ---
 
@@ -199,7 +207,6 @@ streamlit run app.py
 
 ---
 
-`
 
 #### License
 
