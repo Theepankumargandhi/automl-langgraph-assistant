@@ -13,16 +13,27 @@ Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-t
 
 ##  Features
 -**One-click AutoML** for tabular data supporting classification and regression tasks
+
 -**RAG grounding** with ChromaDB to keep LLM generations policy-compliant
+
 -**Safety-first** execution with sandboxed code execution and I/O guards
+
 -Deterministic baselines using LogisticRegression/RandomForest or Ridge/RandomForestRegressor as fallback
+
 -**Professional outputs** including Markdown and PDF reports with embedded visualizations
+
 -**Kaggle dataset loader** supporting both slug/URL input and CSV upload
+
 -**MLflow experiment tracking** with complete pipeline observability
+
 -**DVC data versioning** using **S3 backend** for ML rules storage
+
 -**AWS cloud deployment with EC2 and S3 integration**
+
 -**MCP protocol implementation** for external tool integration
+
 -**CI/CD automation with GitHub Actions** and DockerHub publishing
+
 
 ---
 
