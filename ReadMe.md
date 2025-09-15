@@ -1,4 +1,4 @@
-# AutoML Assistant (Tabular) — with RAG + Safe Execution
+# AutoML Assistant using Langgraph — with RAG + Safe Execution
 
 Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-to-end:
 1) profile data
@@ -12,12 +12,17 @@ Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-t
 ---
 
 ##  Features
-- **One-click AutoML for tabular data** (classification/regression)
-- **RAG grounding with Chroma DB** to keep the LLM on-policy
-- **Safety first**: sandboxed execution, I/O & tuning guards
-- **Deterministic baselines** (LogReg/RandomForest or Ridge/RFR) as fallback
-- **Professional outputs**: Markdown and PDF (ReportLab), with embedded/linked plots
-- **Kaggle loader** (slug/URL) in addition to CSV upload
+-**One-click AutoML** for tabular data supporting classification and regression tasks
+-**RAG grounding** with ChromaDB to keep LLM generations policy-compliant
+-**Safety-first** execution with sandboxed code execution and I/O guards
+-Deterministic baselines using LogisticRegression/RandomForest or Ridge/RandomForestRegressor as fallback
+-**Professional outputs** including Markdown and PDF reports with embedded visualizations
+-**Kaggle dataset loader** supporting both slug/URL input and CSV upload
+-**MLflow experiment tracking** with complete pipeline observability
+-**DVC data versioning** using **S3 backend** for ML rules storage
+-**AWS cloud deployment with EC2 and S3 integration**
+-**MCP protocol implementation** for external tool integration
+-**CI/CD automation with GitHub Actions** and DockerHub publishing
 
 ---
 
@@ -30,64 +35,55 @@ Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-t
 
 ## How to use this
 
--Load data: upload a CSV or paste a Kaggle slug/URL.
+**Load Data**: Upload a CSV file or paste a Kaggle dataset slug/URL
+**Pick Target**: Choose the target column for prediction
+**Run AutoML**: The application will automatically:
 
--Pick target: choose the target column.
+Profile the dataset and infer task type
+Plan a pipeline following EDA → preprocessing → modeling → evaluation workflow
+Retrieve relevant rules with RAG to ground the LLM
+Generate code for each step with strict contracts
+Safely execute the code and train an AI model
+Train baseline models if needed and select the winner on fresh hold-out data
 
--Run AutoML: the app will:
-
--Profile the dataset and infer task
-
--Plan a pipeline (EDA → preprocessing → modeling → evaluation)
-
--Retrieve rules with RAG to ground the LLM
-
--Generate code for each step (with strict contracts)
-
--Safely execute the code; train an AI model
-
--Train baselines if needed and select the winner on a fresh hold-out
-
--Review results: profile JSON, metrics table, plots, and cleaned code map
-
--Export: download run_summary.md and run_summary.pdf
-
+Review Results: Examine profile JSON, metrics tables, plots, and cleaned code map
+Export: Download run_summary.md and run_summary.pdf with complete results
 
 ##  Project Structure
 
 ```
 automl-assistant/
-├─ app.py                     # Streamlit UI (upload/Kaggle loader, target pick, run, results, downloads)
-├─ execution.py               # CLI/terminal runner (optional; run the graph headlessly)
-├─ ingest_rules.py            # Builds the Chroma vector store from the markdown files in rules/
-├─ main_runner.py             # Batch/headless entrypoint that mirrors the Streamlit run
-├─ prompts.py                 # Prompt templates + policy/contract text used by LLM codegen
-├─ llm_codegen.py             # Helper to generate & clean Python code blocks with the LLM
+├─ app.py                     # Streamlit UI with upload, target selection, and results
+├─ mcp_server.py             # Model Control Protocol JSON-RPC server
+├─ mlflow_config.py          # MLflow experiment tracking configuration
+├─ cost_tracker.py           # OpenAI API usage monitoring
+├─ ingest_rules.py           # ChromaDB vector store builder from markdown rules
+├─ main_runner.py            # Batch processing entrypoint
+├─ prompts.py                # LLM prompt templates and policy contracts
+├─ llm_codegen.py            # Python code generation and cleaning utilities
+├─ docker-compose.yml        # Multi-service orchestration
+├─ .dvc/                     # DVC configuration for data versioning
+├─ rules.dvc                 # DVC-tracked ML rules directory
+├─ .github/workflows/        # CI/CD automation pipeline
 │
-├─ agents/                    # LangGraph “nodes” (each file is a focused agent)
-│  ├─ __init__.py
-│  ├─ graph_orchestrator.py   # Wires the whole flow; defines create_graph()
-│  ├─ intake_agent.py         # Seeds/validates state (df/target) before other steps
-│  ├─ profile_agent.py        # Schema, dtypes, missingness, task inference, class balance
-│  ├─ planning_agent.py       # High-level plan (EDA → preprocess → model → eval → export)
-│  ├─ retrieval_agent.py      # RAG via Chroma; fetches policy/rule snippets for the plan
-│  ├─ pipeline_builder.py     # Turns plan+RAG into code map; also configures a baseline
-│  ├─ execution_agent.py      # Safe execution of generated code; collects plots; sets _origin='ai'
-│  ├─ evaluation_agent.py     # Hold-out metrics; picks best of AI vs baseline
-│  └─ summary_agent.py        # Final Markdown summary (includes inline/linked visuals)
+├─ agents/                   # LangGraph agent implementations
+│  ├─ graph_orchestrator.py  # Workflow coordination and MLflow integration
+│  ├─ profile_agent.py       # Dataset schema and task inference
+│  ├─ planning_agent.py      # Pipeline step generation
+│  ├─ retrieval_agent.py     # RAG knowledge base queries
+│  ├─ execution_agent.py     # Code generation with LLM
+│  ├─ pipeline_builder.py    # Safe code execution and baseline training
+│  ├─ evaluation_agent.py    # Model evaluation and selection
+│  └─ summary_agent.py       # Report generation with embedded plots
 │
-├─ rules/                     # Curated policy/rule notes ingested by ingest_rules.py
-│  ├─ regression.md
-│  ├─ regression_metrics.md
-│  ├─ report_structure.md
-│  └─ … (more .md rule files)
-│
-├─ .env                       # Environment variables 
-└─ README.md                  # Project documentation
+└─ rules/                    # ML knowledge base (DVC-tracked)
+   ├─ regression.md
+   ├─ classification.md
+   ├─ preprocessing.md
+   └─ ...                    # Additional rule files
 
 ```
 ---
-
 ##  Screenshots
 
 **Landing Page**  
@@ -99,6 +95,8 @@ automl-assistant/
 **Results**  
 ![Text Output](Screenshots/results.png)
 
+![Text Output](Screenshots/results1.png)
+
 **Code Generation**  
 ![Image Output](Screenshots/code_generation.png)
 
@@ -107,6 +105,72 @@ automl-assistant/
 ![Chat Summary](Screenshots/generated_summary.png)
 
 ---
+
+---
+## Technology Implementation
+
+**LLM Integration**: OpenAI GPT-4o generates custom pipeline code with strict execution contracts
+**Vector Database**: ChromaDB stores and retrieves ML best practices for context-aware code generation
+**Experiment Tracking**: MLflow logs all pipeline runs, parameters, metrics, and artifacts with model registry
+**Data Versioning**: DVC manages 43 ML rule documents stored in AWS S3 with cross-environment sync
+**Cloud Infrastructure**: AWS EC2 deployment with proper security groups and S3 integration
+**Containerization**: Docker and Docker Compose for multi-service application deployment
+**CI/CD Pipeline**: GitHub Actions automates testing, building, security scanning, and DockerHub publishing
+**API Protocols**: MCP implementation provides JSON-RPC interface for external tool integration
+
+---
+
+---
+
+## Environment Configuration
+Create .env file with required credentials:
+
+OPENAI_API_KEY=your_openai_api_key
+KAGGLE_USERNAME=your_kaggle_username  
+KAGGLE_KEY=your_kaggle_api_key
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_DEFAULT_REGION=us-east-1
+MLFLOW_TRACKING_URI=http://localhost:5000
+
+
+
+## Configure DVC for data versioning:
+```
+dvc remote add -d s3remote s3://your-bucket-name
+dvc remote modify s3remote region us-east-1
+dvc pull
+```
+---
+
+## Local Development:
+```
+git clone https://github.com/Theepankumargandhi/automl-langgraph-assistant.git
+
+```
+## cd automl-langgraph-assistant
+
+### Requiremetns
+```
+pip install -r requirements.txt
+```
+
+### Run the Application
+```
+streamlit run app.py
+``
+
+---
+
+---
+## Customization
+
+**RAG Rules**: create rules/ directory, then run python ingest_rules.py to update the vector database
+**Prompts**: Modify templates in prompts.py to adjust LLM behavior and code generation contracts
+**Baselines**: Configure algorithms and metrics in pipeline_builder.py and evaluation_agent.py
+**Reporting**: Adjust PDF styling and layout in the report generation section of summary_agent.py
+
+
 
 ## What’s happening under the hood (short)
 
@@ -120,32 +184,11 @@ automl-assistant/
 
 -Reporting: summary_agent.py builds Markdown (plots inline for UI); app.py sanitizes for download and ReportLab converts to PDF with page-sized images.
 
-## Customization 
 
--Rules & RAG: edit rules_data.json (add imputation/encoding/plotting policies, modeling patterns), then run ingest_rules.py.
-
--Prompts: tighten or extend templates in prompts.py.
-
--Baselines: adjust algorithms/metrics in pipeline_builder.py / evaluation_agent.py.
-
--PDF: tweak margins/styles in the PDF section of app.py.
 
 ---
-### Configure Environment Variables
-in the .env file  add your keys:
-```
-OPENAI_API_KEY
 
-KAGGLE_USERNAME
-
-KAGGLE_KEY
-```
----
-
-### Run the Application
-```
-streamlit run app.py
-```
+`
 
 #### License
 
