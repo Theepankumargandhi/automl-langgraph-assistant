@@ -106,7 +106,7 @@ automl-assistant/
 **Results**  
 ![Text Output](Screenshots/results.png)
 
-![Text Output](Screenshots/results1.png)
+![Text Output](Screenshots/result1.png)
 
 **Code Generation**  
 ![Image Output](Screenshots/code_generation.png)
