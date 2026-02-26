@@ -1,9 +1,7 @@
 # profile_agent.py
-from langchain.tools import tool
 import pandas as pd
 from sklearn.utils.multiclass import type_of_target
 
-@tool
 def profile_dataset(df: pd.DataFrame, target_column: str) -> dict:
     """
     Build a robust profile of the dataset for downstream planning/codegen.

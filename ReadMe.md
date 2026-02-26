@@ -39,6 +39,57 @@ Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-t
 
 ##  Repository structure (high level)
 
+```mermaid
+flowchart TD
+    U1[User input in UI]
+    U2[Load data in app.py]
+    U3[Select target column]
+    U4[Build input_state]
+
+    N0[InitMLflow node]
+    N1[Profile node]
+    N2[RetrieveRules node]
+    N3[Plan node]
+    N4[Generate Code in execution_agent]
+    N5[Execute and Train in pipeline_builder]
+    N6[Evaluate node]
+    N7[Summarize node]
+    N8[FinalizeMLflow node]
+
+    F[final_state returned to app.py]
+
+    O1[Profile output]
+    O2[Metrics output]
+    O3[Plots output]
+    O4[Steps and Code Map output]
+    O5[Summary MD and PDF output]
+
+    K[Kaggle API optional]
+    C[Chroma store optional]
+    A[OpenAI API]
+    M[MLflow server optional]
+
+    U1 --> U2 --> U3 --> U4
+    U4 --> N0 --> N1 --> N2 --> N3 --> N4 --> N5 --> N6 --> N7 --> N8 --> F
+
+    F --> O1
+    F --> O2
+    F --> O3
+    F --> O4
+    F --> O5
+
+    K -.-> U2
+    C -.-> N2
+    A -.-> N2
+    A -.-> N3
+    A -.-> N4
+    M -.-> N0
+    M -.-> N5
+    M -.-> N6
+    M -.-> N7
+    M -.-> N8
+```
+
 
 
 

@@ -903,7 +903,19 @@ if st.session_state.final_state is not None:
         st.markdown("### Embedded Plots (inline)")
         for p in plot_meta:
             if os.path.exists(p["path"]):
-                st.image(p["path"], caption=p.get("label") or "Visualization", use_container_width=True)
+                try:
+                    st.image(
+                        p["path"],
+                        caption=p.get("label") or "Visualization",
+                        use_container_width=True,
+                    )
+                except TypeError:
+                    # Backward compatibility for older Streamlit versions.
+                    st.image(
+                        p["path"],
+                        caption=p.get("label") or "Visualization",
+                        use_column_width=True,
+                    )
 
     # ---- Markdown download ----
     st.download_button(
