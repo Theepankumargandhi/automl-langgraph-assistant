@@ -37,7 +37,7 @@ Streamlit app that builds a full ML pipeline for a CSV (or Kaggle dataset) end-t
 
 ---
 
-##  Repository structure (high level)
+##  Repository structure 
 
 ```mermaid
 flowchart TD
@@ -242,7 +242,7 @@ streamlit run app.py
 
 
 
-## What’s happening under the hood (short)
+## What’s happening under the hood 
 
 -LangGraph orchestrates modular “agents” (intake → profile → planning → retrieval → pipeline_build → execution → evaluation → summary).
 
@@ -258,7 +258,3 @@ streamlit run app.py
 
 ---
 
-
-#### License
-
-This project is licensed under the MIT License.
